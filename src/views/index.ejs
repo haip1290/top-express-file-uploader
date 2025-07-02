@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title><%=title%></title>
+  </head>
+  <body>
+    <h1><%=title%></h1>
+    <form action="/log-in" method="post">
+      <label for="email">Email:</label>
+      <input type="email" name="email" id="email" />
+      <label for="password">Password:</label>
+      <input type="password" name="password" id="password" />
+      <button type="submit">Log In</button>
+    </form>
+
+    <p>
+      Do not have an account yet? Please <a href="/sign-up">Sign up</a> here
+    </p>
+  </body>
+</html>
