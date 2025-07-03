@@ -7,5 +7,6 @@ router.get("/sign-up", indexController.getSignUpPage);
 router.post("/sign-up", indexController.signUp);
 router.post("/log-in", indexController.login);
 router.get("/dashboard", indexController.getDashboardPage);
+router.get("/log-out", indexController.logOut);
 
 module.exports = router;

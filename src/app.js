@@ -4,7 +4,9 @@ require("dotenv").config();
 const express = require("express");
 const app = express();
 const session = require("express-session");
-const passport = require("./authentication/passport");
+const { PrismaSessionStore } = require("@quixo3/prisma-session-store");
+const { PrismaClient } = require("@prisma/client");
+const passport = require("./authenticator/passport");
 const path = require("path");
 const indexRouter = require("./routers/indexRouter");
 
@@ -18,6 +20,12 @@ app.use(
     secret: process.env.SESSION_SECRET,
     resave: false,
     saveUninitialized: false,
+    cookie: { maxAge: 1000 * 30 },
+    store: new PrismaSessionStore(new PrismaClient(), {
+      checkPeriod: 2 * 60 * 1000, // internal to remove expired session
+      dbRecordIdIsSessionId: true, // use session ID as prisma record ID
+      dbRecordIdFunction: undefined,
+    }),
   }),
 );
 
@@ -28,10 +36,10 @@ app.use(express.urlencoded({ extended: true }));
 // ROUTES
 app.use("/", indexRouter);
 
-// ERROR HANDLER
+// Global ERROR HANDLER
 
 app.use((error, req, res, next) => {
-  console.log(error);
+  console.log("Global error ", error);
   res.status(500).send("Internal Server Error");
 });
 
