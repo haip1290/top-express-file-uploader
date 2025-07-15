@@ -1,10 +1,16 @@
 const db = require("../db/db");
-const bcrypt = require("bcryptjs");
+
 const asyncHandler = require("express-async-handler");
+
+// AUTHENTICATION PACKAGES
 const passport = require("../authenticator/passport");
 const validator = require("../validation/validator");
+const bcrypt = require("bcryptjs");
+
 const { validationResult } = require("express-validator");
 const { isAuthenticated } = require("../authenticator/authenticator");
+
+const upload = require("../configuration/upload");
 
 const indexController = {
   index: (req, res) => {
@@ -40,7 +46,7 @@ const indexController = {
         console.log("sign up finished");
         res.redirect("/");
       } catch (error) {
-        if (error.code === "P2002") {   
+        if (error.code === "P2002") {
           console.log("Dupplicate error sign up attempt ");
           return res.render("sign-up", {
             title: "Sign Up form",
@@ -78,7 +84,24 @@ const indexController = {
   getDashboardPage: [
     isAuthenticated,
     (req, res) => {
-      res.render("dashboard");
+      console.log("rendering dashboard page");
+      res.render("dashboard", { errors: [] });
+    },
+  ],
+
+  uploadFile: [
+    isAuthenticated,
+    upload.single("uploadedFile"),
+    (req, res) => {
+      console.log("request file ", req.file);
+
+      if (!req.file) {
+        const errMsg = "file upload failed or no file selected";
+        console.error(errMsg);
+        return res.render("dashboard", { errors: [{ msg: errMsg }] });
+      }
+      console.log("File uploaded successfully");
+      return res.render("dashboard", { errors: [] });
     },
   ],
 

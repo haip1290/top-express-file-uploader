@@ -7,9 +7,10 @@
   </head>
   <body>
     <h1>Dashboard</h1>
-    <form action="/upload-file" method="post">
+    <%- include("partials/errors.ejs") %>
+    <form action="/upload-file" method="post" enctype="multipart/form-data">
       <label for="upload-file">File:</label>
-      <input type="file" name="file" id="upload-file" />
+      <input type="file" name="uploadedFile" id="upload-file" />
       <button type="submit">Upload</button>
     </form>
     <a href="/log-out">Log out</a>
