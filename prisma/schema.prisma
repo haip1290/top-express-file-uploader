@@ -18,6 +18,8 @@ model User {
   id Int @id @default(autoincrement())
   email String @unique
   password String
+  folders Folder[]
+  files File[]
 }
 
 model Session {
@@ -25,4 +27,24 @@ model Session {
   sid String @unique
   data String 
   expiresAt DateTime 
+}
+
+model Folder {
+  id Int @id @default(autoincrement())
+  name String
+  owner User @relation(fields: [ownerId], references: [id])
+  ownerId Int
+  files File[]
+  @@unique([name, ownerId])
+}
+
+model File {
+  id Int @id @default(autoincrement())
+  name String
+  owner User @relation(fields: [ownerId], references: [id])
+  ownerId Int
+
+  folder Folder? @relation(fields: [folderId], references: [id])
+  folderId Int?
+  @@unique([name, folderId])
 }

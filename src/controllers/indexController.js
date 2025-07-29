@@ -76,34 +76,96 @@ const indexController = {
       next();
     },
     passport.authenticate("local", {
-      successRedirect: "/dashboard",
+      successRedirect: "/dashboard/folders",
       failureRedirect: "/",
     }),
   ],
 
   getDashboardPage: [
     isAuthenticated,
-    (req, res) => {
+    async (req, res) => {
       console.log("rendering dashboard page");
-      res.render("dashboard", { errors: [] });
+      const folderId = parseInt(req.params.folderId);
+      if (folderId) {
+        console.log("Getting folder from folder id ", folderId);
+        const folder = await db.getFolderByFolderId(folderId);
+        console.log("Getting all files from folder ", folder.name);
+        const files = await db.getAllFilesByFolderId(folderId);
+        const filesDTO = files.map((file) => ({
+          id: file.id,
+          name: file.name,
+        }));
+        res.render("dashboard", {
+          folders: [{ id: folder.id, name: folder.name }],
+          files: filesDTO,
+        });
+      } else {
+        console.log("Getting all folder from DB");
+        const folders = await db.getAllFolderByUserId(req.user.id);
+        console.log("Found folders ", folders);
+        const foldersDTO = folders.map((folder) => ({
+          id: folder.id,
+          name: folder.name,
+        }));
+        console.log("Get all files on root");
+        const files = await db.getAllFilesWithNoFolder();
+        const filesDTO = files.map((file) => ({
+          id: file.id,
+          name: file.name,
+        }));
+        console.log("Found files on roots", files);
+        res.render("dashboard", { folders: foldersDTO, files: filesDTO });
+      }
     },
   ],
 
   uploadFile: [
     isAuthenticated,
     upload.single("uploadedFile"),
-    (req, res) => {
-      console.log("request file ", req.file);
-
+    async (req, res) => {
+      console.log("User: ", req.user);
+      // Error handler
       if (!req.file) {
         const errMsg = "file upload failed or no file selected";
         console.error(errMsg);
-        return res.render("dashboard", { errors: [{ msg: errMsg }] });
+        req.flash("error", errMsg);
+        return res.redirect("/dashboard/folders");
       }
-      console.log("File uploaded successfully");
-      return res.render("dashboard", { errors: [] });
+      // create file the redirect back to dashboard page
+      const successMsg = "File uploaded successfully";
+      const selectedFolderId = parseInt(req.body.folderId);
+      console.log("folderId: ", req.body.folderId);
+      console.log("selected folder id ", selectedFolderId);
+      if (!Number.isNaN(selectedFolderId)) {
+        console.log("Create file in folder id ", selectedFolderId);
+        await db.createFile({
+          name: req.file.filename,
+          ownerId: req.user.id,
+          folderId: selectedFolderId,
+        });
+
+        req.flash("successMsg", successMsg);
+        res.redirect(`/dashboard/folders/${selectedFolderId}`);
+      } else {
+        console.log("Create file in root folder");
+        await db.createFile({
+          name: req.file.filename,
+          ownerId: req.user.id,
+        });
+        req.flash("successMsg", successMsg);
+        res.redirect("/dashboard/folders");
+      }
+      console.log(successMsg);
     },
   ],
+
+  createFolder: async (req, res) => {
+    console.log("Calling DB to create folder");
+    await db.createFolder({ name: req.body.folderName, ownerId: req.user.id });
+    const successMsg = "Created folder successfully";
+    req.flash("successMsg", successMsg);
+    return res.redirect("/dashboard/folders");
+  },
 
   logOut: (req, res, next) => {
     req.logout((error) => {
