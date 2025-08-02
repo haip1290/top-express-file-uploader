@@ -1,4 +1,6 @@
-const db = require("../db/db");
+const userRepo = require("../db/userRepo");
+const folderRepo = require("../db/folderRepo");
+const fileRepo = require("../db/fileRepo");
 
 const asyncHandler = require("express-async-handler");
 
@@ -12,6 +14,11 @@ const { isAuthenticated } = require("../authenticator/authenticator");
 
 const upload = require("../configuration/upload");
 
+const mapFilesToDTOs = (files) =>
+  files.map((file) => ({ id: file.id, name: file.name }));
+const mapFoldersToDTO = (folders) =>
+  folders.map((folder) => ({ id: folder.id, name: folder.name }));
+
 const indexController = {
   index: (req, res) => {
     console.log("Rendering index page");
@@ -24,6 +31,7 @@ const indexController = {
   },
 
   signUp: [
+    // validate sig up form
     ...validator.validateSignUpForm,
     (req, res, next) => {
       const errors = validationResult(req);
@@ -37,12 +45,13 @@ const indexController = {
       }
       next();
     },
+    // sign up user after validation
     asyncHandler(async (req, res, next) => {
       console.log("Signing up user");
       const { email, password } = req.body;
       try {
         const hashedPassword = await bcrypt.hash(password, 10);
-        await db.createUser({ email, hashedPassword });
+        await userRepo.createUser({ email, hashedPassword });
         console.log("sign up finished");
         res.redirect("/");
       } catch (error) {
@@ -83,47 +92,39 @@ const indexController = {
 
   getDashboardPage: [
     isAuthenticated,
-    async (req, res) => {
+    asyncHandler(async (req, res) => {
       console.log("rendering dashboard page");
       const folderId = parseInt(req.params.folderId);
+
       if (folderId) {
+        // if open a folder, get folder info and all files
         console.log("Getting folder from folder id ", folderId);
-        const folder = await db.getFolderByFolderId(folderId);
-        console.log("Getting all files from folder ", folder.name);
-        const files = await db.getAllFilesByFolderId(folderId);
-        const filesDTO = files.map((file) => ({
-          id: file.id,
-          name: file.name,
-        }));
+        const folder = await folderRepo.getFolderByFolderId(folderId);
+
         res.render("dashboard", {
           folders: [{ id: folder.id, name: folder.name }],
-          files: filesDTO,
+          files: mapFilesToDTOs(folder.files),
         });
       } else {
+        // if user is at root, get all folders and files at root
+        const userId = req.user.id;
         console.log("Getting all folder from DB");
-        const folders = await db.getAllFolderByUserId(req.user.id);
-        console.log("Found folders ", folders);
-        const foldersDTO = folders.map((folder) => ({
-          id: folder.id,
-          name: folder.name,
-        }));
+        const folders = await folderRepo.getAllFolderByUserId(userId);
         console.log("Get all files on root");
-        const files = await db.getAllFilesWithNoFolder();
-        const filesDTO = files.map((file) => ({
-          id: file.id,
-          name: file.name,
-        }));
-        console.log("Found files on roots", files);
-        res.render("dashboard", { folders: foldersDTO, files: filesDTO });
+        const files = await fileRepo.getAllFilesWithNoFolderByUserId(userId);
+
+        res.render("dashboard", {
+          folders: mapFoldersToDTO(folders),
+          files: mapFilesToDTOs(files),
+        });
       }
-    },
+    }),
   ],
 
   uploadFile: [
     isAuthenticated,
     upload.single("uploadedFile"),
     async (req, res) => {
-      console.log("User: ", req.user);
       // Error handler
       if (!req.file) {
         const errMsg = "file upload failed or no file selected";
@@ -133,39 +134,54 @@ const indexController = {
       }
       // create file the redirect back to dashboard page
       const successMsg = "File uploaded successfully";
-      const selectedFolderId = parseInt(req.body.folderId);
-      console.log("folderId: ", req.body.folderId);
-      console.log("selected folder id ", selectedFolderId);
-      if (!Number.isNaN(selectedFolderId)) {
-        console.log("Create file in folder id ", selectedFolderId);
-        await db.createFile({
-          name: req.file.filename,
-          ownerId: req.user.id,
-          folderId: selectedFolderId,
-        });
+      const folderId = req.body.folderId;
+      const selectedFolderId = parseInt(folderId);
+      const isFolderSelected = !Number.isNaN(selectedFolderId);
 
-        req.flash("successMsg", successMsg);
-        res.redirect(`/dashboard/folders/${selectedFolderId}`);
-      } else {
-        console.log("Create file in root folder");
-        await db.createFile({
-          name: req.file.filename,
-          ownerId: req.user.id,
-        });
-        req.flash("successMsg", successMsg);
-        res.redirect("/dashboard/folders");
-      }
+      // file to be created
+      const fileDTO = {
+        name: req.file.filename,
+        ownerId: req.user.id,
+        folderId: isFolderSelected ? selectedFolderId : null,
+      };
+      console.log("Create file in db");
+      await fileRepo.createFile(fileDTO);
+
+      req.flash("successMsg", successMsg);
       console.log(successMsg);
+
+      const redirectPath = isFolderSelected
+        ? `/dashboard/folders/${selectedFolderId}`
+        : "/dashboard/folders";
+      res.redirect(redirectPath);
     },
   ],
 
-  createFolder: async (req, res) => {
+  createFolder: asyncHandler(async (req, res) => {
     console.log("Calling DB to create folder");
-    await db.createFolder({ name: req.body.folderName, ownerId: req.user.id });
+    await folderRepo.createFolder({
+      name: req.body.folderName,
+      ownerId: req.user.id,
+    });
     const successMsg = "Created folder successfully";
     req.flash("successMsg", successMsg);
     return res.redirect("/dashboard/folders");
-  },
+  }),
+
+  updateFolder: asyncHandler(async (req, res) => {
+    console.log("Calling DB to update folder");
+  }),
+
+  deleteFolder: asyncHandler(async (req, res) => {
+    console.log("Calling db to delete folder");
+    await folderRepo.deleteFolder({
+      folderId: parseInt(req.params.folderId),
+      ownerId: req.user.id,
+    });
+    const successMsg = "Deleted folder successfully";
+    req.flash("successMsg", successMsg);
+    return res.redirect("/dashboard/folders");
+  }),
 
   logOut: (req, res, next) => {
     req.logout((error) => {

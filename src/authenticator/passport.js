@@ -1,11 +1,11 @@
 const passport = require("passport");
 const LocalStrategy = require("passport-local").Strategy;
 const bcrypt = require("bcryptjs");
-const db = require("../db/db");
+const userRepo = require("../db/userRepo");
 
 const strategy = async (email, password, done) => {
   try {
-    const user = await db.getUserByEmail(email);
+    const user = await userRepo.getUserByEmail(email);
 
     if (!user) {
       return done(null, false, { message: "Incorrect email" });
@@ -28,7 +28,7 @@ passport.serializeUser((user, done) => {
 
 passport.deserializeUser(async (id, done) => {
   try {
-    const user = await db.getUserById(id);
+    const user = await userRepo.getUserById(id);
     done(null, user);
   } catch (error) {
     done(error);

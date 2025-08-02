@@ -29,7 +29,12 @@
     <h4>Folders:</h4>
     <ul>
       <% folders.forEach((folder)=>{%>
-      <li><a href="/dashboard/folders/<%=folder.id%>"><%=folder.name%></a></li>
+      <li>
+        <a href="/dashboard/folders/<%=folder.id%>"><%=folder.name%></a>
+        <form action="/folders/<%=folder.id%>/delete" method="post">
+          <button type="submit">Delete</button>
+        </form>
+      </li>
       <%})%>
     </ul>
     <% if(files && files.length>0) {%>
