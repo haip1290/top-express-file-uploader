@@ -170,6 +170,14 @@ const indexController = {
 
   updateFolder: asyncHandler(async (req, res) => {
     console.log("Calling DB to update folder");
+    await folderRepo.updateFolder({
+      id: parseInt(req.params.folderId),
+      name: req.body.folderName,
+      ownerId: req.user.id,
+    });
+    const successMsg = "Update folder successfully";
+    req.flash("successMsg", successMsg);
+    return res.redirect("/dashboard/folders");
   }),
 
   deleteFolder: asyncHandler(async (req, res) => {

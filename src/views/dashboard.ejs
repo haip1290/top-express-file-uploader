@@ -31,6 +31,11 @@
       <% folders.forEach((folder)=>{%>
       <li>
         <a href="/dashboard/folders/<%=folder.id%>"><%=folder.name%></a>
+        <form action="/folders/<%=folder.id%>/update" method="post">
+          <label for="folder-name">Name:</label>
+          <input type="text" name="folderName" id="folder-name" />
+          <button type="submit">Update</button>
+        </form>
         <form action="/folders/<%=folder.id%>/delete" method="post">
           <button type="submit">Delete</button>
         </form>

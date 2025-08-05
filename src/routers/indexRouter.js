@@ -14,6 +14,7 @@ router.get("/dashboard/folders/:folderId", indexController.getDashboardPage);
 router.post("/files", indexController.uploadFile);
 
 router.post("/folders", indexController.createFolder);
+router.post("/folders/:folderId/update", indexController.updateFolder);
 router.post("/folders/:folderId/delete", indexController.deleteFolder);
 
 module.exports = router;

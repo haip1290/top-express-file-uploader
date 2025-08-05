@@ -20,7 +20,7 @@ const getAllFolderByUserId = async (userId) => {
     const folders = await prisma.folder.findMany({
       where: { ownerId: userId },
     });
-    console.log("Found folders", folders);
+    console.log("Found folders");
     return folders;
   } catch (error) {
     console.error("Error while querying folders by user Id ", error);
@@ -35,7 +35,7 @@ const getFolderByFolderId = async (folderId) => {
       where: { id: folderId },
       include: { files: true },
     });
-    console.log("Found folder ", folder);
+    console.log("Found folder");
     return folder;
   } catch (error) {
     console.error("Error while querying folder by id ", error);
