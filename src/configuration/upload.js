@@ -2,6 +2,11 @@
 const multer = require("multer");
 const path = require("path");
 
+const { createReadStream } = require("fs");
+
+// superbase
+const { S3Client, PutObjectCommand } = require("@aws-sdk/client-s3");
+
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
     cb(null, "uploads/");
@@ -13,7 +18,7 @@ const storage = multer.diskStorage({
     cb(null, filename);
   },
 });
-const upload = multer({
+const uploadLocal = multer({
   storage: storage,
   limits: { fileSize: 5 * 1025 * 1024 }, // limit to 5mb
   fileFilter: (req, file, cb) => {
@@ -33,4 +38,29 @@ const upload = multer({
   },
 });
 
-module.exports = upload;
+// SUPERBASE setup
+const client = new S3Client({
+  forcePathStyle: true,
+  region: process.env.SUPERBASE_REGION,
+  endpoint: process.env.SUPERBASE_ENDPOINT,
+  credentials: {
+    accessKeyId: process.env.SUPERBASE_ACCESS_KEY_ID,
+    secretAccessKey: process.env.SUPERBASE_SECRET_ACCESS_KEY,
+  },
+});
+
+// upload file to superbase storage
+const uploadSuperbase = async ({ path, filename, mimetype }) => {
+  const fileStream = createReadStream(path);
+
+  const uploadCommand = new PutObjectCommand({
+    Bucket: process.env.SUPERBASE_BUCKET,
+    Key: filename,
+    Body: fileStream,
+    ContentType: mimetype,
+  });
+
+  await client.send(uploadCommand);
+};
+
+module.exports = { uploadLocal, uploadSuperbase };

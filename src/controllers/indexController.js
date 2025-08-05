@@ -2,6 +2,8 @@ const userRepo = require("../db/userRepo");
 const folderRepo = require("../db/folderRepo");
 const fileRepo = require("../db/fileRepo");
 
+const { promises } = require("fs");
+
 const asyncHandler = require("express-async-handler");
 
 // AUTHENTICATION PACKAGES
@@ -12,7 +14,7 @@ const bcrypt = require("bcryptjs");
 const { validationResult } = require("express-validator");
 const { isAuthenticated } = require("../authenticator/authenticator");
 
-const upload = require("../configuration/upload");
+const { uploadLocal, uploadSuperbase } = require("../configuration/upload");
 
 const mapFilesToDTOs = (files) =>
   files.map((file) => ({
@@ -128,39 +130,62 @@ const indexController = {
 
   uploadFile: [
     isAuthenticated,
-    upload.single("uploadedFile"),
+    uploadLocal.single("uploadedFile"),
     async (req, res) => {
+      const file = req.file;
       // Error handler
-      if (!req.file) {
+      if (!file) {
         const errMsg = "file upload failed or no file selected";
         console.error(errMsg);
         req.flash("error", errMsg);
         return res.redirect("/dashboard/folders");
       }
-      console.log("Upload file: ", req.file);
-      // create file the redirect back to dashboard page
-      const successMsg = "File uploaded successfully";
-      const folderId = req.body.folderId;
-      const selectedFolderId = parseInt(folderId);
-      const isFolderSelected = !Number.isNaN(selectedFolderId);
+      // upload file to superbase storage
+      console.log("Upload file: ", file);
+      const path = "uploads/" + file.filename;
+      try {
+        await uploadSuperbase({
+          path,
+          filename: file.filename,
+          mimetype: file.mimetype,
+        });
+        console.log(
+          `File '${file.filename}' uploaded successfully to bucket '${process.env.SUPERBASE_BUCKET}'`,
+        );
+        // delete local file
+        await promises.unlink(path);
+        console.log(`Temporary file '${path}' deleted.`);
 
-      // file to be created
-      const fileDTO = {
-        name: req.file.filename,
-        size: req.file.size,
-        ownerId: req.user.id,
-        folderId: isFolderSelected ? selectedFolderId : null,
-      };
-      console.log("Create file in db");
-      await fileRepo.createFile(fileDTO);
+        // create file then redirect back to dashboard page
+        const successMsg = "File uploaded successfully";
+        const folderId = req.body.folderId;
+        const selectedFolderId = parseInt(folderId);
+        const isFolderSelected = !Number.isNaN(selectedFolderId);
 
-      req.flash("successMsg", successMsg);
-      console.log(successMsg);
+        // file to be created
+        const fileDTO = {
+          name: req.file.filename,
+          size: req.file.size,
+          ownerId: req.user.id,
+          folderId: isFolderSelected ? selectedFolderId : null,
+        };
+        console.log("Create file in db");
+        await fileRepo.createFile(fileDTO);
 
-      const redirectPath = isFolderSelected
-        ? `/dashboard/folders/${selectedFolderId}`
-        : "/dashboard/folders";
-      res.redirect(redirectPath);
+        req.flash("successMsg", successMsg);
+        console.log(successMsg);
+
+        const redirectPath = isFolderSelected
+          ? `/dashboard/folders/${selectedFolderId}`
+          : "/dashboard/folders";
+        res.redirect(redirectPath);
+      } catch (error) {
+        console.log("Error upload file to superbase ", error);
+        // delete local file
+        await promises.unlink(filePath);
+        console.log(`Temporary file '${filePath}' deleted.`);
+        throw error;
+      }
     },
   ],
 

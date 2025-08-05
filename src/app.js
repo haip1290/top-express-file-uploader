@@ -11,6 +11,8 @@ const flash = require("connect-flash");
 const path = require("path");
 const indexRouter = require("./routers/indexRouter");
 
+
+
 //  VIEWS
 app.set("views", path.join(__dirname, "views"));
 app.set("view engine", "ejs");
@@ -44,6 +46,8 @@ app.use((req, res, next) => {
   res.locals.currentUser = req.user;
   next();
 });
+
+
 
 // ROUTES
 app.use("/", indexRouter);
