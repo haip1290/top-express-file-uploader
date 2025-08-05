@@ -15,7 +15,12 @@ const { isAuthenticated } = require("../authenticator/authenticator");
 const upload = require("../configuration/upload");
 
 const mapFilesToDTOs = (files) =>
-  files.map((file) => ({ id: file.id, name: file.name }));
+  files.map((file) => ({
+    id: file.id,
+    name: file.name,
+    size: file.size,
+    uploadAt: file.uploadAt,
+  }));
 const mapFoldersToDTO = (folders) =>
   folders.map((folder) => ({ id: folder.id, name: folder.name }));
 
@@ -132,6 +137,7 @@ const indexController = {
         req.flash("error", errMsg);
         return res.redirect("/dashboard/folders");
       }
+      console.log("Upload file: ", req.file);
       // create file the redirect back to dashboard page
       const successMsg = "File uploaded successfully";
       const folderId = req.body.folderId;
@@ -141,6 +147,7 @@ const indexController = {
       // file to be created
       const fileDTO = {
         name: req.file.filename,
+        size: req.file.size,
         ownerId: req.user.id,
         folderId: isFolderSelected ? selectedFolderId : null,
       };

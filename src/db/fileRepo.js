@@ -1,12 +1,13 @@
 const { PrismaClient } = require("@prisma/client");
 const prisma = new PrismaClient();
 
-const createFile = async ({ name, ownerId, folderId }) => {
+const createFile = async ({ name, size, ownerId, folderId }) => {
   console.log("Insert file into database");
   try {
     const file = await prisma.file.create({
       data: {
         name,
+        size,
         owner: { connect: { id: ownerId } },
         ...(folderId && { folder: { connect: { id: folderId } } }),
       },

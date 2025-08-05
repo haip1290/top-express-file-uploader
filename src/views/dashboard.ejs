@@ -46,7 +46,15 @@
     <h4>Files:</h4>
     <ul>
       <% files.forEach((file)=>{%>
-      <li><%=file.name%></li>
+      <li>
+        Name:
+        <%=file.name%>
+        Size:
+        <%=file.size%>
+        Upload Date:
+        <%=file.uploadAt%>
+        <a href="/uploads/<%=file.name%>" download="<%=file.name%>">Download</a>
+      </li>
       <%})%>
     </ul>
     <%}%>
